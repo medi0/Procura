@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Procura – Sign in</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css"></head>
+<body class="auth">
+<section class="brand">
+  <div><div class="lg">pro<i>c</i>ura</div>
+    <h1>One record for every supplier, unit and shipment.</h1></div>
+  <ul>
+    <li>Stock is locked while you order, so it is never promised twice.</li>
+    <li>Only verified suppliers are ranked, on price, stock, distance, lead time and reliability.</li>
+    <li>Every role sees only its own slice of the data.</li>
+  </ul>
+  <small>DBMS mini project · Schema Architects · NIT Delhi</small>
+</section>
+<section class="panel"><div class="card">
+  <h2 id="ttl">Sign in</h2><div class="mu" id="sub">Choose your role, then enter your details.</div>
+  <div class="tabs" role="tablist"><button class="on" data-tab="in" role="tab">Sign in</button><button data-tab="up" role="tab">Register</button></div>
+
+  <form id="fin" class="fm" autocomplete="on">
+    <div class="roles" id="roles" role="radiogroup" aria-label="Role"></div>
+    <label>Email<input name="email" type="email" required autocomplete="username"></label>
+    <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+    <div class="err" id="e1" role="alert"></div>
+    <button type="submit" id="b1">Sign in</button>
+    <div class="mu">Trying the demo? <button type="button" class="link" id="demo">Fill demo credentials for this role</button></div>
+  </form>
+
+  <form id="fup" class="fm" hidden autocomplete="on">
+    <div class="roles" id="rroles" role="radiogroup" aria-label="Account type"></div>
+    <label>Your name<input name="full_name" required maxlength="100"></label>
+    <label id="orgl">Company name<input name="org" required maxlength="120"></label>
+    <label>Email<input name="email" type="email" required autocomplete="username"></label>
+    <label>Password (8 or more characters)<input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+    <label>Phone<input name="phone" maxlength="20" inputmode="tel"></label>
+    <label>Address<input name="address" required maxlength="255"></label>
+    <label>City<select name="city" required></select></label>
+    <div class="err" id="e2" role="alert"></div>
+    <button type="submit" id="b2">Create account</button>
+    <div class="mu" id="note"></div>
+  </form>
+</div></section>
+<script>
+const ROLES=[['ADMIN','Admin'],['BUYER','Buyer'],['SUPPLIER','Supplier'],['WAREHOUSE_MANAGER','Warehouse manager']];
+const DEMO={ADMIN:['admin@procura.com','Admin@123'],BUYER:['buyer1@skyline.com','Buyer@123'],SUPPLIER:['sales@bharatmetals.in','Supplier@123'],WAREHOUSE_MANAGER:['wm.delhi@procura.com','Warehouse@123']};
+const CITY={Ahmedabad:[23.0225,72.5714],Bengaluru:[12.9716,77.5946],Chennai:[13.0827,80.2707],Delhi:[28.6139,77.2090],Hyderabad:[17.3850,78.4867],Jaipur:[26.9124,75.7873],Kolkata:[22.5726,88.3639],Mumbai:[19.0760,72.8777],Pune:[18.5204,73.8567],Surat:[21.1702,72.8311]};
+const $=s=>document.querySelector(s);let role='BUYER',reg='BUYER';
+const home=r=>'/';
+function chips(el,list,cur,set){el.innerHTML=list.map(([v,l])=>`<button type="button" role="radio" aria-checked="${v==cur}" class="${v==cur?'on':''}" data-v="${v}">${l}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(b){set(b.dataset.v)}}}
+const drawIn=()=>chips($('#roles'),ROLES,role,v=>{role=v;drawIn();$('#e1').textContent=''});
+const drawUp=()=>{chips($('#rroles'),ROLES.filter(r=>/BUYER|SUPPLIER/.test(r[0])),reg,v=>{reg=v;drawUp()});
+  $('#orgl').firstChild.textContent=reg=='BUYER'?'Company name':'Business name';
+  $('#note').textContent=reg=='SUPPLIER'?'New suppliers start as pending. An administrator verifies you before buyers can see your offers.':'Admins and warehouse managers are created by an administrator.'};
+drawIn();drawUp();
+$('select[name=city]').innerHTML='<option value="">Select city</option>'+Object.keys(CITY).map(c=>`<option>${c}</option>`).join('');
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{const up=b.dataset.tab=='up';
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x==b));$('#fin').hidden=up;$('#fup').hidden=!up;
+  $('#ttl').textContent=up?'Create an account':'Sign in';$('#sub').textContent=up?'Register as a buyer or a supplier.':'Choose your role, then enter your details.'});
+$('#demo').onclick=()=>{const f=$('#fin');f.email.value=DEMO[role][0];f.password.value=DEMO[role][1]};
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
+$('#fin').onsubmit=async e=>{e.preventDefault();const f=e.target,b=$('#b1');b.disabled=true;$('#e1').textContent='';
+  try{await post('/api/auth/login',{email:f.email.value,password:f.password.value,role});location.href='/'}
+  catch(x){$('#e1').textContent=x.message;b.disabled=false}};
+$('#fup').onsubmit=async e=>{e.preventDefault();const f=e.target,b=$('#b2');b.disabled=true;$('#e2').textContent='';
+  const c=CITY[f.city.value];if(!c){$('#e2').textContent='Select a city';b.disabled=false;return}
+  const body={role:reg,full_name:f.full_name.value,email:f.email.value,password:f.password.value,phone:f.phone.value,address:f.address.value,city:f.city.value,latitude:c[0],longitude:c[1]};
+  body[reg=='BUYER'?'company_name':'business_name']=f.org.value;
+  try{await post('/api/auth/register',body);location.href='/'}catch(x){$('#e2').textContent=x.message;b.disabled=false}};
+fetch('/api/auth/me').then(r=>{if(r.ok)location.href='/'});
+</script></body></html>
